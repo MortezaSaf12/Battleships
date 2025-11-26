@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavController
 import com.example.battleship.ui.components.Background
 import com.example.battleship.ui.components.GameInvitation
@@ -34,22 +33,25 @@ fun LobbyScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Lifecycle observer for setting player online when entering lobby
+    // Lifecycle observer for managing player status
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> viewModel.setPlayerStatus("online")
+                Lifecycle.Event.ON_STOP -> viewModel.setPlayerStatus("offline")
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            viewModel.setPlayerStatus("offline")
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
     LaunchedEffect(uiState.navigateToGame) {
         uiState.navigateToGame?.let { (player, opponent, gameId) ->
+            viewModel.setPlayerStatus("in game")
             navController.navigate("GameBoardScreen?gameId=$gameId&playerName=$player&opponentName=$opponent")
             viewModel.onNavigationHandled()
         }

@@ -47,6 +47,10 @@ class GameViewModel(
         startListeningToGame()
     }
 
+    fun setPlayerStatus(status: String) {
+        repository.setPlayerStatus(playerName, status)
+    }
+
     private fun startListeningToGame() {
         viewModelScope.launch {
             repository.listenForGame(gameId).collect { gameData ->
@@ -54,7 +58,7 @@ class GameViewModel(
                 val turn = gameData["turn"] as? String
                 val player1 = gameData["player1"] as? String
                 val player2 = gameData["player2"] as? String
-                
+
                 // Determine if I am player 1 or 2
                 val isPlayer1 = playerName == player1
                 val myBoardField = if (isPlayer1) "player1Board" else "player2Board"
@@ -72,7 +76,7 @@ class GameViewModel(
                 val trueOpponentBoard = rawOpponentBoard?.map { rowStr ->
                     rowStr.map { it.toString() }
                 }
-                
+
                 var currentMyGrid = _uiState.value.playerGrid
                 var currentOpponentView = _uiState.value.opponentGrid
 
@@ -95,7 +99,7 @@ class GameViewModel(
                 _uiState.update { state ->
                     state.copy(
                         isOpponentReady = opponentReady,
-                        isMyTurn = (turn == playerName) && myReady && opponentReady,
+                        isMyTurn = (turn == playerName) && myReady && opponentReady && status == "active",
                         trueOpponentBoard = trueOpponentBoard,
                         playerGrid = if (myReady) currentMyGrid else state.playerGrid,
                         opponentGrid = currentOpponentView,
@@ -232,12 +236,12 @@ class GameViewModel(
 
     private fun handleGamePlayClick(row: Int, col: Int) {
         val currentState = _uiState.value
-        
+
         // Validation: Must be my turn, game not over, opponent ready, and cell not already shot
         if (!currentState.isMyTurn || currentState.gameWon || currentState.gameLost || !currentState.isOpponentReady) {
             return
         }
-        
+
         if (currentState.opponentGrid[row][col] != "W") {
             return // Already shot here
         }
@@ -254,15 +258,15 @@ class GameViewModel(
             "col" to col,
             "result" to result
         )
-        
+
         repository.makeMove(gameId, move)
-    
+
         val updates = mutableMapOf<String, Any>("turn" to opponentName) // Update turn
-        
-        // Check for Win        
+
+        // Check for Win
         var hitCount = currentState.opponentGrid.flatten().count { it == "H" }
         if (result == "H") hitCount++
-        
+
         if (hitCount >= 13) {
             updates["winner"] = playerName
             updates["status"] = "finished"
@@ -276,21 +280,29 @@ class GameViewModel(
         if (currentState.isPlayerReady) return
 
         viewModelScope.launch {
-             val gameData = repository.listenForGame(gameId).firstOrNull() ?: return@launch
-             val p1 = gameData["player1"] as? String
-             val isPlayer1 = p1 == playerName
-             
-             val boardField = if (isPlayer1) "player1Board" else "player2Board"
-             val readyField = if (isPlayer1) "player1Ready" else "player2Ready"
-             
-             repository.updatePlayerBoard(
-                 gameId, 
-                 boardField, 
-                 currentState.playerGrid,
-                 readyField
-             ) {
-                 _uiState.update { it.copy(isPlayerReady = true) }
-             }
+            val gameData = repository.listenForGame(gameId).firstOrNull() ?: return@launch
+            val p1 = gameData["player1"] as? String
+            val p2 = gameData["player2"] as? String
+            val isPlayer1 = p1 == playerName
+
+            val boardField = if (isPlayer1) "player1Board" else "player2Board"
+            val readyField = if (isPlayer1) "player1Ready" else "player2Ready"
+            val opponentReadyField = if (isPlayer1) "player2Ready" else "player1Ready"
+            val opponentReady = gameData[opponentReadyField] as? Boolean ?: false
+
+            repository.updatePlayerBoard(
+                gameId,
+                boardField,
+                currentState.playerGrid,
+                readyField
+            ) {
+                _uiState.update { it.copy(isPlayerReady = true) }
+
+                // If both players are now ready, transition game to "active"
+                if (opponentReady) {
+                    repository.updateGameState(gameId, mapOf("status" to "active"))
+                }
+            }
         }
     }
 }

@@ -6,9 +6,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.example.battleship.ui.components.GameGridView
 
@@ -20,6 +23,23 @@ fun GameBoardScreen(
     opponentName: String
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Lifecycle observer: managing player status during game
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.setPlayerStatus("in game")
+                Lifecycle.Event.ON_STOP -> viewModel.setPlayerStatus("online")
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            viewModel.setPlayerStatus("online")
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -84,7 +104,7 @@ fun GameBoardScreen(
                 uiState.isMyTurn -> "YOUR TURN"
                 else -> "OPPONENT'S TURN"
             }
-            
+
             Text(
                 text = statusText,
                 fontSize = 18.sp,
@@ -115,28 +135,25 @@ fun GameBoardScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             // Render Opponent Grid with masking logic (ships hidden)
             val maskedOpponentGrid = uiState.opponentGrid.map { row ->
                 row.map { cell -> if (cell == "S") "W" else cell }
             }
-            
+
             GameGridView(
                 grid = maskedOpponentGrid,
                 onCellClick = { row, col -> viewModel.onCellClick(row, col) },
                 modifier = Modifier.size(300.dp) // Larger size for interaction
             )
-            
+
             if (uiState.gameWon || uiState.gameLost) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    onClick = { 
+                    onClick = {
+                        viewModel.setPlayerStatus("online")
                         navController.popBackStack()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Blue,
-                        contentColor = Color.White
-                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Back to Lobby")
