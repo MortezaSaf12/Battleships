@@ -25,7 +25,8 @@ class LobbyViewModel(
     val uiState: StateFlow<LobbyUiState> = _uiState.asStateFlow()
 
     private var challengeListener: ListenerRegistration? = null
-    private var outgoingChallengeListener: ListenerRegistration? = null
+    // UNUSED: listenToOutgoingChallenge uses Flow instead of ListenerRegistration
+    // private var outgoingChallengeListener: ListenerRegistration? = null
 
     init {
         viewModelScope.launch {

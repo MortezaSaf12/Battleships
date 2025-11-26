@@ -44,7 +44,6 @@ fun GameBoardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .fillMaxSize()
             .padding(8.dp)
             .padding(top = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally

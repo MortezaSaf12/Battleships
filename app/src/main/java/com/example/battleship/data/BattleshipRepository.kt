@@ -149,62 +149,11 @@ class BattleshipRepository {
         awaitClose { listener.remove() }
     }
 
-    fun acceptChallenge(
-        challengeId: String,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        firestore.collection("challenges").document(challengeId)
-            .update("status", "accepted")
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { exception -> onFailure(exception) }
-    }
-
     fun declineChallenge(challengeId: String) {
         firestore.collection("challenges").document(challengeId)
             .update("status", "declined")
             .addOnFailureListener { exception ->
                 Log.e("ChallengeError", "Error declining challenge: ${exception.message}")
-            }
-    }
-
-    // Game Logic
-    fun createGame(
-        playerA: String,
-        playerB: String,
-        onSuccess: (String) -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        val newGame = mapOf(
-            "player1" to playerA,
-            "player2" to playerB,
-            "player1Ready" to false,
-            "player2Ready" to false,
-            "turn" to playerA, // Player A starts
-            "status" to "active",
-            "winner" to "",
-            "moves" to emptyList<Map<String, Any>>()
-        )
-
-        firestore.collection("games")
-            .add(newGame)
-            .addOnSuccessListener { docRef -> onSuccess(docRef.id) }
-            .addOnFailureListener { e -> onFailure(e) }
-    }
-
-    fun listenForActiveGame(
-        playerName: String,
-        onGameFound: (String) -> Unit
-    ): ListenerRegistration {
-    
-        return firestore.collection("games")
-            .whereArrayContains("players_index", playerName)
-            .whereEqualTo("status", "active")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
-                snapshot?.documents?.firstOrNull()?.let { doc ->
-                    onGameFound(doc.id)
-                }
             }
     }
     

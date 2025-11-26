@@ -57,11 +57,8 @@ class GameViewModel(
                 val status = gameData["status"] as? String
                 val turn = gameData["turn"] as? String
                 val player1 = gameData["player1"] as? String
-                val player2 = gameData["player2"] as? String
-
                 // Determine if I am player 1 or 2
                 val isPlayer1 = playerName == player1
-                val myBoardField = if (isPlayer1) "player1Board" else "player2Board"
                 val opponentBoardField = if (isPlayer1) "player2Board" else "player1Board"
                 val myReadyField = if (isPlayer1) "player1Ready" else "player2Ready"
                 val opponentReadyField = if (isPlayer1) "player2Ready" else "player1Ready"
